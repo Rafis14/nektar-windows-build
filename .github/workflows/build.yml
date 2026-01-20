@@ -1,18 +1,18 @@
 name: Build Nektar Windows
 
-on: [workflow_dispatch] # Запуск вручную кнопкой
+on: [workflow_dispatch]
 
 jobs:
   build:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v4
-      with:
-        repository: nektar/nektar
-        submodules: recursive
+    - name: Clone Nektar from GitLab
+      run: |
+        git clone --recursive https://gitlab.nektar.info/nektar/nektar.git .
+        # Мы скачиваем всё в текущую папку сервера
 
-    - name: Install Dependencies
+    - name: Install Dependencies via vcpkg
       run: |
         vcpkg install boost-python:x64-windows
         vcpkg install tinyxml:x64-windows
@@ -21,9 +21,14 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DNEKTAR_BUILD_PYTHON=ON -DNEKTAR_BUILD_UTILITIES=ON -DCMAKE_INSTALL_PREFIX=./dist ..
+        # Указываем путь к vcpkg, чтобы CMake нашел библиотеки
+        cmake -G "Visual Studio 17 2022" -A x64 `
+              -DCMAKE_TOOLCHAIN_FILE="C:/smpl/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+              -DNEKTAR_BUILD_PYTHON=ON `
+              -DNEKTAR_BUILD_UTILITIES=ON `
+              -DCMAKE_INSTALL_PREFIX=./dist ..
 
-    - name: Build
+    - name: Build and Install
       run: |
         cd build
         cmake --build . --config Release -j 4
