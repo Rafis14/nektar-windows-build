@@ -1,0 +1,36 @@
+name: Build Nektar Windows
+
+on: [workflow_dispatch] # Запуск вручную кнопкой
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: nektar/nektar
+        submodules: recursive
+
+    - name: Install Dependencies
+      run: |
+        vcpkg install boost-python:x64-windows
+        vcpkg install tinyxml:x64-windows
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake -DNEKTAR_BUILD_PYTHON=ON -DNEKTAR_BUILD_UTILITIES=ON -DCMAKE_INSTALL_PREFIX=./dist ..
+
+    - name: Build
+      run: |
+        cd build
+        cmake --build . --config Release -j 4
+        cmake --install . --config Release
+
+    - name: Upload Result
+      uses: actions/upload-artifact@v4
+      with:
+        name: Nektar-Windows-Package
+        path: build/dist
