@@ -32,10 +32,11 @@ jobs:
       run: |
         cd build
         cmake --build . --config Release -j 4
-        cmake --install . --config Release
+        cmake --install . --config Release --prefix ../final_package
 
     - name: Upload Result
       uses: actions/upload-artifact@v4
       with:
         name: Nektar-Windows-Package
-        path: build/dist
+        path: final_package/
+        if-no-files-found: error
