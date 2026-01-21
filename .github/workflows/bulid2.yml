@@ -1,0 +1,60 @@
+name: Build Nektar Windows
+
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Clone Nektar from GitLab
+      run: |
+        git clone --recursive https://gitlab.nektar.info/nektar/nektar.git .
+
+    - name: Install Dependencies via vcpkg
+      run: |
+        vcpkg install boost-python:x64-windows
+        vcpkg install tinyxml:x64-windows
+
+    - name: Configure CMake
+      run: |
+        mkdir build
+        cd build
+        cmake -G "Visual Studio 17 2022" -A x64 `
+              -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+              -DNEKTAR_BUILD_PYTHON=ON `
+              -DNEKTAR_BUILD_UTILITIES=ON `
+              -DNEKTAR_BUILD_SOLVERS=ON `
+              -DCMAKE_INSTALL_PREFIX=./dist ..
+
+    - name: Build
+      run: |
+        cd build
+        cmake --build . --config Release -j 4
+
+    - name: Collect Binaries Manually
+      run: |
+        # Создаем чистые папки для результата
+        mkdir output_bin
+        mkdir output_python
+        
+        # Копируем все .exe из папки build (решатели и утилиты)
+        Get-ChildItem -Path build -Filter *.exe -Recurse | Copy-Item -Destination output_bin
+        
+        # Копируем все .dll (библиотеки)
+        Get-ChildItem -Path build -Filter *.dll -Recurse | Copy-Item -Destination output_bin
+        
+        # Копируем файлы для Python (.pyd)
+        Get-ChildItem -Path build -Filter *.pyd -Recurse | Copy-Item -Destination output_python
+
+    - name: Upload Binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: Nektar-EXE-Only
+        path: output_bin/
+
+    - name: Upload Python Modules
+      uses: actions/upload-artifact@v4
+      with:
+        name: Nektar-Python-Modules
+        path: output_python/
